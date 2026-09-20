@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport"
-content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-<title>Eclipse: Awakening</title>
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ECLIPSE: AWAKENING</title>
 
 <style>
 * {
@@ -16,10 +15,10 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 body {
     overflow: hidden;
-    background: #050510;
+    background: #080810;
+    color: white;
     font-family: Arial, sans-serif;
     touch-action: none;
-    color: white;
 }
 
 canvas {
@@ -28,17 +27,28 @@ canvas {
 
 #hud {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 15px;
+    left: 15px;
     z-index: 10;
+    text-shadow: 0 2px 5px black;
+}
+
+#hud h2 {
+    font-size: 18px;
+    letter-spacing: 2px;
+}
+
+#stats {
+    font-size: 13px;
+    margin-top: 5px;
 }
 
 #healthBar {
     width: 180px;
-    height: 15px;
+    height: 12px;
     background: #333;
-    border: 2px solid white;
-    border-radius: 10px;
+    border: 1px solid white;
+    border-radius: 8px;
     overflow: hidden;
     margin-top: 8px;
 }
@@ -46,15 +56,15 @@ canvas {
 #healthFill {
     width: 100%;
     height: 100%;
-    background: #ff3030;
+    background: #e22;
 }
 
 #joystick {
     position: absolute;
-    bottom: 45px;
-    left: 35px;
-    width: 120px;
-    height: 120px;
+    bottom: 35px;
+    left: 30px;
+    width: 125px;
+    height: 125px;
     border-radius: 50%;
     background: #ffffff22;
     border: 2px solid #ffffff55;
@@ -66,40 +76,48 @@ canvas {
     position: absolute;
     width: 50px;
     height: 50px;
-    background: #ffffff99;
+    left: 35.5px;
+    top: 35.5px;
+    background: #ffffffaa;
     border-radius: 50%;
-    left: 35px;
-    top: 35px;
     pointer-events: none;
 }
 
-#attack {
+.action {
     position: absolute;
-    bottom: 65px;
-    right: 35px;
-    width: 90px;
-    height: 90px;
     border-radius: 50%;
     border: 2px solid white;
-    background: #bb2222aa;
     color: white;
-    font-size: 16px;
     font-weight: bold;
     z-index: 10;
     touch-action: none;
 }
 
-#attack:active {
-    background: red;
+#attack {
+    width: 85px;
+    height: 85px;
+    right: 25px;
+    bottom: 45px;
+    background: #b02030cc;
+}
+
+#dash {
+    width: 65px;
+    height: 65px;
+    right: 110px;
+    bottom: 130px;
+    background: #3050b0cc;
 }
 
 #message {
     position: absolute;
-    top: 80px;
+    top: 85px;
     width: 100%;
     text-align: center;
-    font-size: 18px;
+    font-size: 20px;
+    font-weight: bold;
     pointer-events: none;
+    text-shadow: 0 2px 5px black;
 }
 
 </style>
@@ -108,9 +126,12 @@ canvas {
 <body>
 
 <div id="hud">
-    <h2>ECLIPSE</h2>
-    <p>Level: <span id="level">1</span></p>
-    <p>XP: <span id="xp">0</span></p>
+    <h2>ECLIPSE: AWAKENING</h2>
+
+    <div id="stats">
+        LEVEL <span id="level">1</span>
+        | XP <span id="xp">0</span>
+    </div>
 
     <div id="healthBar">
         <div id="healthFill"></div>
@@ -123,444 +144,682 @@ canvas {
     <div id="stick"></div>
 </div>
 
-<button id="attack">ATTACK</button>
+<button class="action" id="attack">ATTACK</button>
+<button class="action" id="dash">DASH</button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script type="module">
 
-<script>
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
-// =============================
+// =====================================
 // GAME SETUP
-// =============================
+// =====================================
 
 const scene = new THREE.Scene();
 
-scene.background = new THREE.Color(0x101025);
+scene.background = new THREE.Color(0x171725);
 
 scene.fog = new THREE.Fog(
-    0x101025,
-    30,
-    100
+    0x171725,
+    35,
+    125
 );
 
 const camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
+    65,
+    innerWidth / innerHeight,
     0.1,
-    1000
+    500
 );
 
 const renderer = new THREE.WebGLRenderer({
-    antialias: true
+    antialias: true,
+    powerPreference: "high-performance"
 });
 
-renderer.setSize(
-    window.innerWidth,
-    window.innerHeight
-);
+renderer.setSize(innerWidth, innerHeight);
 
 renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio, 2)
+    Math.min(devicePixelRatio, 1.5)
 );
 
 document.body.appendChild(renderer.domElement);
 
-
-// =============================
+// =====================================
 // LIGHTING
-// =============================
+// =====================================
 
-const ambientLight = new THREE.AmbientLight(
-    0xffffff,
-    0.7
+scene.add(
+    new THREE.HemisphereLight(
+        0xaaaaff,
+        0x303030,
+        1.5
+    )
 );
 
-scene.add(ambientLight);
-
-const sunlight = new THREE.DirectionalLight(
-    0xffffff,
-    1.5
+const sun = new THREE.DirectionalLight(
+    0xffdddd,
+    2
 );
 
-sunlight.position.set(10, 20, 10);
+sun.position.set(30, 60, 20);
 
-scene.add(sunlight);
+scene.add(sun);
 
+// =====================================
+// MATERIALS
+// =====================================
 
-// =============================
-// WORLD
-// =============================
+const materials = {
+    road: new THREE.MeshStandardMaterial({
+        color: 0x22222b
+    }),
 
-const groundGeometry = new THREE.PlaneGeometry(
-    200,
-    200
-);
+    sidewalk: new THREE.MeshStandardMaterial({
+        color: 0x555560
+    }),
 
-const groundMaterial = new THREE.MeshStandardMaterial({
-    color: 0x222233
-});
+    building: new THREE.MeshStandardMaterial({
+        color: 0x343442
+    }),
 
-const ground = new THREE.Mesh(
-    groundGeometry,
-    groundMaterial
-);
+    darkBuilding: new THREE.MeshStandardMaterial({
+        color: 0x222230
+    }),
 
-ground.rotation.x = -Math.PI / 2;
+    window: new THREE.MeshBasicMaterial({
+        color: 0xffdd88
+    }),
 
-scene.add(ground);
+    rubble: new THREE.MeshStandardMaterial({
+        color: 0x666670
+    }),
 
+    skin: new THREE.MeshStandardMaterial({
+        color: 0xe7b58d
+    }),
 
-// =============================
-// BUILDINGS
-// =============================
+    hair: new THREE.MeshStandardMaterial({
+        color: 0x101018
+    }),
 
-function createBuilding(x, z, height) {
+    jacket: new THREE.MeshStandardMaterial({
+        color: 0x151520
+    }),
 
-    const geometry = new THREE.BoxGeometry(
-        5,
-        height,
-        5
-    );
+    pants: new THREE.MeshStandardMaterial({
+        color: 0x202030
+    }),
 
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x303050
-    });
+    red: new THREE.MeshStandardMaterial({
+        color: 0xcc2233
+    }),
 
-    const building = new THREE.Mesh(
-        geometry,
+    enemy: new THREE.MeshStandardMaterial({
+        color: 0x772233
+    })
+};
+
+// =====================================
+// WORLD HELPERS
+// =====================================
+
+function box(w, h, d, material, x, y, z, parent = scene) {
+
+    const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
         material
     );
 
-    building.position.set(
-        x,
-        height / 2,
-        z
+    mesh.position.set(x, y, z);
+
+    parent.add(mesh);
+
+    return mesh;
+}
+
+// =====================================
+// SHINJUKU MAP
+// =====================================
+
+// Ground
+
+box(
+    220, 0.2, 220,
+    materials.sidewalk,
+    0, -0.15, 0
+);
+
+// Main roads
+
+box(
+    20, 0.02, 220,
+    materials.road,
+    0, 0, 0
+);
+
+box(
+    220, 0.02, 20,
+    materials.road,
+    0, 0, 0
+);
+
+// Road markings
+
+const lineMaterial = new THREE.MeshBasicMaterial({
+    color: 0xddddaa
+});
+
+for (let i = -100; i <= 100; i += 10) {
+
+    box(
+        0.2, 0.03, 4,
+        lineMaterial,
+        0, 0.03, i
     );
+
+    box(
+        4, 0.03, 0.2,
+        lineMaterial,
+        i, 0.03, 0
+    );
+}
+
+// =====================================
+// BUILDINGS
+// =====================================
+
+function createBuilding(x, z, height, damaged = false) {
+
+    const building = new THREE.Group();
+
+    building.position.set(x, 0, z);
 
     scene.add(building);
-}
 
-for (let i = 0; i < 30; i++) {
+    const width = 8;
+    const depth = 8;
 
-    const x = (Math.random() - 0.5) * 150;
-    const z = (Math.random() - 0.5) * 150;
+    box(
+        width,
+        height,
+        depth,
+        Math.random() > 0.5
+            ? materials.building
+            : materials.darkBuilding,
+        0,
+        height / 2,
+        0,
+        building
+    );
 
-    if (Math.abs(x) < 12 && Math.abs(z) < 12) {
-        continue;
+    // Windows
+
+    const floors = Math.floor(height / 3);
+
+    for (let floor = 1; floor < floors; floor++) {
+
+        for (let column = -1; column <= 1; column++) {
+
+            if (Math.random() > 0.35) {
+
+                box(
+                    1.1, 1.2, 0.05,
+                    materials.window,
+                    column * 2.2,
+                    floor * 3,
+                    4.03,
+                    building
+                );
+            }
+        }
     }
 
-    createBuilding(
-        x,
-        z,
-        Math.random() * 15 + 5
-    );
+    // Damaged roof
+
+    if (damaged) {
+
+        box(
+            5, 2, 5,
+            materials.rubble,
+            1,
+            height + 0.5,
+            0,
+            building
+        );
+
+        for (let i = 0; i < 5; i++) {
+
+            const debris = box(
+                1 + Math.random() * 2,
+                0.5 + Math.random(),
+                1 + Math.random() * 2,
+                materials.rubble,
+                (Math.random() - 0.5) * 12,
+                0.5,
+                (Math.random() - 0.5) * 12,
+                building
+            );
+
+            debris.rotation.y = Math.random() * Math.PI;
+        }
+    }
 }
 
+// City blocks
 
-// =============================
+for (let x = -90; x <= 90; x += 13) {
+
+    for (let z = -90; z <= 90; z += 13) {
+
+        if (Math.abs(x) < 13 || Math.abs(z) < 13) {
+            continue;
+        }
+
+        if (Math.random() < 0.15) {
+            continue;
+        }
+
+        const height = 12 + Math.random() * 35;
+
+        createBuilding(
+            x,
+            z,
+            height,
+            Math.random() < 0.35
+        );
+    }
+}
+
+// =====================================
+// ANIME CHARACTER CREATOR
+// =====================================
+
+function createCharacter(isEnemy = false) {
+
+    const character = new THREE.Group();
+
+    const torso = box(
+        0.85, 1.1, 0.45,
+        isEnemy ? materials.enemy : materials.jacket,
+        0, 1.65, 0,
+        character
+    );
+
+    // Neck
+
+    box(
+        0.2, 0.2, 0.2,
+        materials.skin,
+        0, 2.3, 0,
+        character
+    );
+
+    // Head
+
+    const head = new THREE.Mesh(
+        new THREE.BoxGeometry(
+            0.55, 0.65, 0.5
+        ),
+        materials.skin
+    );
+
+    head.position.y = 2.65;
+
+    character.add(head);
+
+    // Hair
+
+    box(
+        0.65, 0.25, 0.6,
+        materials.hair,
+        0, 3.02, 0,
+        character
+    );
+
+    // Spiky anime hair
+
+    for (let i = 0; i < 5; i++) {
+
+        const spike = new THREE.Mesh(
+            new THREE.ConeGeometry(
+                0.16,
+                0.55,
+                4
+            ),
+            materials.hair
+        );
+
+        spike.position.set(
+            (i - 2) * 0.13,
+            3.25 + Math.random() * 0.12,
+            0
+        );
+
+        spike.rotation.z = (i - 2) * -0.15;
+
+        character.add(spike);
+    }
+
+    // Eyes
+
+    const eyeMaterial = new THREE.MeshBasicMaterial({
+        color: isEnemy ? 0xff2222 : 0x111111
+    });
+
+    box(
+        0.09, 0.06, 0.02,
+        eyeMaterial,
+        -0.14, 2.7, -0.26,
+        character
+    );
+
+    box(
+        0.09, 0.06, 0.02,
+        eyeMaterial,
+        0.14, 2.7, -0.26,
+        character
+    );
+
+    // Arms
+
+    const leftArm = new THREE.Group();
+    leftArm.position.set(-0.58, 2.1, 0);
+
+    box(
+        0.28, 0.85, 0.3,
+        isEnemy ? materials.enemy : materials.jacket,
+        0, -0.42, 0,
+        leftArm
+    );
+
+    box(
+        0.25, 0.2, 0.25,
+        materials.skin,
+        0, -0.9, 0,
+        leftArm
+    );
+
+    character.add(leftArm);
+
+    const rightArm = new THREE.Group();
+    rightArm.position.set(0.58, 2.1, 0);
+
+    box(
+        0.28, 0.85, 0.3,
+        isEnemy ? materials.enemy : materials.jacket,
+        0, -0.42, 0,
+        rightArm
+    );
+
+    box(
+        0.25, 0.2, 0.25,
+        materials.skin,
+        0, -0.9, 0,
+        rightArm
+    );
+
+    character.add(rightArm);
+
+    // Legs
+
+    const leftLeg = new THREE.Group();
+    leftLeg.position.set(-0.23, 1.1, 0);
+
+    box(
+        0.32, 1, 0.35,
+        materials.pants,
+        0, -0.5, 0,
+        leftLeg
+    );
+
+    character.add(leftLeg);
+
+    const rightLeg = new THREE.Group();
+    rightLeg.position.set(0.23, 1.1, 0);
+
+    box(
+        0.32, 1, 0.35,
+        materials.pants,
+        0, -0.5, 0,
+        rightLeg
+    );
+
+    character.add(rightLeg);
+
+    character.userData = {
+        leftArm,
+        rightArm,
+        leftLeg,
+        rightLeg,
+        torso,
+        health: isEnemy ? 3 : 100,
+        lastAttack: 0
+    };
+
+    return character;
+}
+
+// =====================================
 // PLAYER
-// =============================
+// =====================================
 
-const player = new THREE.Group();
-
-const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(
-        0.5,
-        1.2,
-        4,
-        8
-    ),
-    new THREE.MeshStandardMaterial({
-        color: 0xeeeeff
-    })
-);
-
-body.position.y = 1.1;
-
-player.add(body);
-
-const head = new THREE.Mesh(
-    new THREE.SphereGeometry(
-        0.35,
-        16,
-        16
-    ),
-    new THREE.MeshStandardMaterial({
-        color: 0x111111
-    })
-);
-
-head.position.y = 2.1;
-
-player.add(head);
+const player = createCharacter();
 
 scene.add(player);
 
-
-// =============================
-// PLAYER STATS
-// =============================
-
 let health = 100;
-
 let xp = 0;
-
 let level = 1;
 
-let attackCooldown = 0;
+let facing = new THREE.Vector3(0, 0, -1);
 
-let facingDirection = new THREE.Vector3(
-    0,
-    0,
-    -1
-);
+let attackTime = 0;
+let dashTime = 0;
+let dashCooldown = 0;
 
-
-// =============================
+// =====================================
 // ENEMIES
-// =============================
+// =====================================
 
 const enemies = [];
 
 function spawnEnemy(x, z) {
 
-    const enemy = new THREE.Mesh(
-        new THREE.CapsuleGeometry(
-            0.5,
-            1.2,
-            4,
-            8
-        ),
-        new THREE.MeshStandardMaterial({
-            color: 0xff2222
-        })
-    );
+    const enemy = createCharacter(true);
 
-    enemy.position.set(x, 1.1, z);
-
-    enemy.userData.health = 3;
-
-    enemy.userData.lastAttack = 0;
+    enemy.position.set(x, 0, z);
 
     scene.add(enemy);
 
     enemies.push(enemy);
 }
 
-spawnEnemy(5, -5);
-spawnEnemy(-5, -8);
-spawnEnemy(8, 5);
-spawnEnemy(-8, 6);
+spawnEnemy(5, -6);
+spawnEnemy(-6, -8);
+spawnEnemy(7, 7);
+spawnEnemy(-8, 5);
 
-
-// =============================
+// =====================================
 // MOBILE JOYSTICK
-// =============================
+// =====================================
 
-const joystick = document.getElementById(
-    "joystick"
-);
-
-const stick = document.getElementById(
-    "stick"
-);
+const joystick = document.getElementById("joystick");
+const stick = document.getElementById("stick");
 
 let moveX = 0;
-
 let moveY = 0;
-
-let joystickPointer = null;
-
-joystick.addEventListener(
-    "pointerdown",
-    function(e) {
-
-        e.preventDefault();
-
-        joystickPointer = e.pointerId;
-
-        joystick.setPointerCapture(
-            e.pointerId
-        );
-
-        updateJoystick(e);
-    }
-);
-
-joystick.addEventListener(
-    "pointermove",
-    function(e) {
-
-        if (e.pointerId !== joystickPointer) {
-            return;
-        }
-
-        updateJoystick(e);
-    }
-);
-
-function resetJoystick(e) {
-
-    if (e.pointerId !== joystickPointer) {
-        return;
-    }
-
-    joystickPointer = null;
-
-    moveX = 0;
-    moveY = 0;
-
-    stick.style.left = "35px";
-    stick.style.top = "35px";
-}
-
-joystick.addEventListener(
-    "pointerup",
-    resetJoystick
-);
-
-joystick.addEventListener(
-    "pointercancel",
-    resetJoystick
-);
+let activePointer = null;
 
 function updateJoystick(e) {
 
     const rect = joystick.getBoundingClientRect();
 
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+    let dx = e.clientX - (rect.left + rect.width / 2);
+    let dy = e.clientY - (rect.top + rect.height / 2);
 
-    let dx = e.clientX - centerX;
-    let dy = e.clientY - centerY;
+    const distance = Math.hypot(dx, dy);
+    const max = 35;
 
-    const distance = Math.sqrt(
-        dx * dx + dy * dy
-    );
+    if (distance > max) {
 
-    const maxDistance = 35;
-
-    if (distance > maxDistance) {
-
-        dx = dx / distance * maxDistance;
-        dy = dy / distance * maxDistance;
+        dx = dx / distance * max;
+        dy = dy / distance * max;
     }
 
-    moveX = dx / maxDistance;
-    moveY = dy / maxDistance;
+    moveX = dx / max;
+    moveY = dy / max;
 
-    stick.style.left = (35 + dx) + "px";
-    stick.style.top = (35 + dy) + "px";
+    stick.style.left = (35.5 + dx) + "px";
+    stick.style.top = (35.5 + dy) + "px";
 }
 
+joystick.addEventListener("pointerdown", e => {
 
-// =============================
-// ATTACK SYSTEM
-// =============================
+    e.preventDefault();
 
-document.getElementById(
-    "attack"
-).addEventListener(
-    "pointerdown",
-    attack
-);
+    activePointer = e.pointerId;
 
-function attack() {
+    joystick.setPointerCapture(e.pointerId);
 
-    const now = performance.now();
+    updateJoystick(e);
+});
 
-    if (now - attackCooldown < 450) {
+joystick.addEventListener("pointermove", e => {
+
+    if (e.pointerId === activePointer) {
+        updateJoystick(e);
+    }
+});
+
+function resetJoystick(e) {
+
+    if (e.pointerId !== activePointer) {
         return;
     }
 
-    attackCooldown = now;
+    activePointer = null;
 
-    const attackPosition = player.position.clone();
+    moveX = 0;
+    moveY = 0;
 
-    attackPosition.add(
-        facingDirection.clone().multiplyScalar(1.2)
-    );
+    stick.style.left = "35.5px";
+    stick.style.top = "35.5px";
+}
 
-    const slash = new THREE.Mesh(
-        new THREE.SphereGeometry(
-            0.8,
-            12,
-            12
-        ),
+joystick.addEventListener("pointerup", resetJoystick);
+joystick.addEventListener("pointercancel", resetJoystick);
+
+// =====================================
+// COMBAT
+// =====================================
+
+document.getElementById("attack")
+.addEventListener("pointerdown", () => {
+
+    const now = performance.now();
+
+    if (now - attackTime < 450) {
+        return;
+    }
+
+    attackTime = now;
+
+    player.userData.rightArm.rotation.x = -1.8;
+
+    // Attack effect
+
+    const effect = new THREE.Mesh(
+        new THREE.SphereGeometry(0.65, 12, 12),
         new THREE.MeshBasicMaterial({
-            color: 0xff3333,
+            color: 0xff3344,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.65
         })
     );
 
-    slash.position.set(
-        attackPosition.x,
-        1.2,
-        attackPosition.z
-    );
+    effect.position.copy(player.position);
 
-    scene.add(slash);
+    effect.position.addScaledVector(facing, 1.2);
+    effect.position.y = 1.5;
+
+    scene.add(effect);
 
     setTimeout(() => {
-        scene.remove(slash);
-        slash.geometry.dispose();
-        slash.material.dispose();
-    }, 120);
+
+        scene.remove(effect);
+
+        effect.geometry.dispose();
+        effect.material.dispose();
+
+    }, 130);
+
+    // Damage enemies
 
     for (let i = enemies.length - 1; i >= 0; i--) {
 
         const enemy = enemies[i];
 
-        const distance = player.position.distanceTo(
-            enemy.position.clone().setY(0)
-        );
+        const direction = enemy.position.clone()
+            .sub(player.position);
 
-        if (distance < 2.5) {
+        direction.y = 0;
 
-            const direction = enemy.position.clone()
-                .sub(player.position);
+        const distance = direction.length();
 
-            direction.y = 0;
-            direction.normalize();
+        if (distance > 2.5) {
+            continue;
+        }
 
-            const dot = direction.dot(facingDirection);
+        direction.normalize();
 
-            if (dot < 0.1) {
-                continue;
-            }
+        if (direction.dot(facing) < 0.1) {
+            continue;
+        }
 
-            enemy.userData.health--;
+        enemy.userData.health--;
 
-            enemy.material.color.setHex(0xffffff);
+        if (enemy.userData.health <= 0) {
+
+            scene.remove(enemy);
+
+            enemies.splice(i, 1);
+
+            gainXP(25);
 
             setTimeout(() => {
 
-                if (enemy.parent) {
-                    enemy.material.color.setHex(0xff2222);
-                }
+                spawnEnemy(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20
+                );
 
-            }, 100);
-
-            if (enemy.userData.health <= 0) {
-
-                scene.remove(enemy);
-
-                enemies.splice(i, 1);
-
-                enemy.geometry.dispose();
-                enemy.material.dispose();
-
-                gainXP(25);
-            }
+            }, 3000);
         }
     }
-}
+});
 
+// =====================================
+// DASH
+// =====================================
 
-// =============================
-// EXPERIENCE SYSTEM
-// =============================
+document.getElementById("dash")
+.addEventListener("pointerdown", () => {
+
+    const now = performance.now();
+
+    if (now - dashCooldown < 2000) {
+        return;
+    }
+
+    dashCooldown = now;
+    dashTime = now;
+});
+
+// =====================================
+// XP SYSTEM
+// =====================================
 
 function gainXP(amount) {
 
@@ -574,39 +833,69 @@ function gainXP(amount) {
 
         health = 100;
 
-        document.getElementById(
-            "message"
-        ).textContent = "LEVEL UP!";
+        showMessage("LEVEL UP!");
     }
 
-    document.getElementById(
-        "xp"
-    ).textContent = xp;
-
-    document.getElementById(
-        "level"
-    ).textContent = level;
+    document.getElementById("xp").textContent = xp;
+    document.getElementById("level").textContent = level;
 }
 
+function showMessage(text) {
 
-// =============================
+    const element = document.getElementById("message");
+
+    element.textContent = text;
+
+    setTimeout(() => {
+
+        if (element.textContent === text) {
+            element.textContent = "";
+        }
+
+    }, 1500);
+}
+
+// =====================================
+// ANIMATION
+// =====================================
+
+function animateCharacter(character, time, moving) {
+
+    const data = character.userData;
+
+    const swing = moving
+        ? Math.sin(time * 10) * 0.6
+        : Math.sin(time * 2) * 0.03;
+
+    data.leftLeg.rotation.x = swing;
+    data.rightLeg.rotation.x = -swing;
+
+    data.leftArm.rotation.x = -swing;
+    data.rightArm.rotation.x = swing;
+
+    data.torso.position.y =
+        1.65 + (moving ? Math.abs(Math.sin(time * 10)) * 0.05 : 0);
+}
+
+// =====================================
 // GAME LOOP
-// =============================
+// =====================================
 
 const clock = new THREE.Clock();
+
+let gameTime = 0;
 
 function animate() {
 
     requestAnimationFrame(animate);
 
-    const delta = Math.min(
-        clock.getDelta(),
-        0.05
-    );
+    const delta = Math.min(clock.getDelta(), 0.05);
 
-    // PLAYER MOVEMENT
+    gameTime += delta;
 
-    const speed = 6;
+    const now = performance.now();
+
+    // Movement
 
     const movement = new THREE.Vector3(
         moveX,
@@ -614,16 +903,22 @@ function animate() {
         moveY
     );
 
-    if (movement.length() > 0.1) {
+    const moving = movement.length() > 0.1;
+
+    if (moving) {
 
         movement.normalize();
+
+        facing.copy(movement);
+
+        const dashing = now - dashTime < 200;
+
+        const speed = dashing ? 22 : 6;
 
         player.position.addScaledVector(
             movement,
             speed * delta
         );
-
-        facingDirection.copy(movement);
 
         player.rotation.y = Math.atan2(
             -movement.x,
@@ -632,21 +927,23 @@ function animate() {
     }
 
     player.position.x = THREE.MathUtils.clamp(
-        player.position.x,
-        -95,
-        95
+        player.position.x, -105, 105
     );
 
     player.position.z = THREE.MathUtils.clamp(
-        player.position.z,
-        -95,
-        95
+        player.position.z, -105, 105
     );
 
+    // Player animation
 
-    // ENEMY AI
+    animateCharacter(player, gameTime, moving);
 
-    const now = performance.now();
+    if (now - attackTime < 200) {
+
+        player.userData.rightArm.rotation.x = -1.8;
+    }
+
+    // Enemy AI
 
     for (const enemy of enemies) {
 
@@ -665,7 +962,18 @@ function animate() {
                 direction,
                 2 * delta
             );
+
+            enemy.rotation.y = Math.atan2(
+                -direction.x,
+                -direction.z
+            );
         }
+
+        animateCharacter(
+            enemy,
+            gameTime,
+            distance < 15 && distance > 1.5
+        );
 
         if (
             distance < 1.7 &&
@@ -674,14 +982,7 @@ function animate() {
 
             enemy.userData.lastAttack = now;
 
-            health = Math.max(
-                0,
-                health - 10
-            );
-
-            document.getElementById(
-                "healthFill"
-            ).style.width = health + "%";
+            health = Math.max(0, health - 10);
 
             if (health <= 0) {
 
@@ -689,68 +990,53 @@ function animate() {
 
                 player.position.set(0, 0, 0);
 
-                document.getElementById(
-                    "healthFill"
-                ).style.width = "100%";
-
-                document.getElementById(
-                    "message"
-                ).textContent = "YOU RESPAWNED";
+                showMessage("YOU RESPAWNED");
             }
         }
     }
 
+    // Health UI
 
-    // CAMERA
+    document.getElementById("healthFill")
+        .style.width = health + "%";
 
-    const cameraTarget = new THREE.Vector3(
+    // Camera
+
+    const target = new THREE.Vector3(
         player.position.x,
-        player.position.y + 7,
-        player.position.z + 11
+        player.position.y + 6,
+        player.position.z + 10
     );
 
     camera.position.lerp(
-        cameraTarget,
-        Math.min(1, 5 * delta)
+        target,
+        Math.min(1, delta * 5)
     );
 
     camera.lookAt(
         player.position.x,
-        player.position.y + 1,
+        player.position.y + 1.5,
         player.position.z
     );
 
-
-    renderer.render(
-        scene,
-        camera
-    );
+    renderer.render(scene, camera);
 }
 
 animate();
 
+// =====================================
+// RESIZE
+// =====================================
 
-// =============================
-// WINDOW RESIZE
-// =============================
+window.addEventListener("resize", () => {
 
-window.addEventListener(
-    "resize",
-    function() {
+    camera.aspect = innerWidth / innerHeight;
 
-        camera.aspect =
-            window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 
-        camera.updateProjectionMatrix();
-
-        renderer.setSize(
-            window.innerWidth,
-            window.innerHeight
-        );
-    }
-);
+    renderer.setSize(innerWidth, innerHeight);
+});
 
 </script>
-
 </body>
 </html>
