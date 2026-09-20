@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Eclipse: Awakening</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: #050510;
+    font-family: Arial, sans-serif;
+    touch-action: none;
+    color: white;
+}
+
+canvas {
+    display: block;
+}
+
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+}
+
+#healthBar {
+    width: 180px;
+    height: 15px;
+    background: #333;
+    border: 2px solid white;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+#healthFill {
+    width: 100%;
+    height: 100%;
+    background: #ff3030;
+}
+
+#joystick {
+    position: absolute;
+    bottom: 45px;
+    left: 35px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #ffffff22;
+    border: 2px solid #ffffff55;
+    z-index: 10;
+    touch-action: none;
+}
+
+#stick {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: #ffffff99;
+    border-radius: 50%;
+    left: 35px;
+    top: 35px;
+    pointer-events: none;
+}
+
+#attack {
+    position: absolute;
+    bottom: 65px;
+    right: 35px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: #bb2222aa;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 10;
+    touch-action: none;
+}
+
+#attack:active {
+    background: red;
+}
+
+#message {
+    position: absolute;
+    top: 80px;
+    width: 100%;
+    text-align: center;
+    font-size: 18px;
+    pointer-events: none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="hud">
+    <h2>ECLIPSE</h2>
+    <p>Level: <span id="level">1</span></p>
+    <p>XP: <span id="xp">0</span></p>
+
+    <div id="healthBar">
+        <div id="healthFill"></div>
+    </div>
+</div>
+
+<div id="message"></div>
+
+<div id="joystick">
+    <div id="stick"></div>
+</div>
+
+<button id="attack">ATTACK</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+
+<script>
+
+// =============================
+// GAME SETUP
+// =============================
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x101025);
+
+scene.fog = new THREE.Fog(
+    0x101025,
+    30,
+    100
+);
+
+const camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+);
+
+document.body.appendChild(renderer.domElement);
+
+
+// =============================
+// LIGHTING
+// =============================
+
+const ambientLight = new THREE.AmbientLight(
+    0xffffff,
+    0.7
+);
+
+scene.add(ambientLight);
+
+const sunlight = new THREE.DirectionalLight(
+    0xffffff,
+    1.5
+);
+
+sunlight.position.set(10, 20, 10);
+
+scene.add(sunlight);
+
+
+// =============================
+// WORLD
+// =============================
+
+const groundGeometry = new THREE.PlaneGeometry(
+    200,
+    200
+);
+
+const groundMaterial = new THREE.MeshStandardMaterial({
+    color: 0x222233
+});
+
+const ground = new THREE.Mesh(
+    groundGeometry,
+    groundMaterial
+);
+
+ground.rotation.x = -Math.PI / 2;
+
+scene.add(ground);
+
+
+// =============================
+// BUILDINGS
+// =============================
+
+function createBuilding(x, z, height) {
+
+    const geometry = new THREE.BoxGeometry(
+        5,
+        height,
+        5
+    );
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x303050
+    });
+
+    const building = new THREE.Mesh(
+        geometry,
+        material
+    );
+
+    building.position.set(
+        x,
+        height / 2,
+        z
+    );
+
+    scene.add(building);
+}
+
+for (let i = 0; i < 30; i++) {
+
+    const x = (Math.random() - 0.5) * 150;
+    const z = (Math.random() - 0.5) * 150;
+
+    if (Math.abs(x) < 12 && Math.abs(z) < 12) {
+        continue;
+    }
+
+    createBuilding(
+        x,
+        z,
+        Math.random() * 15 + 5
+    );
+}
+
+
+// =============================
+// PLAYER
+// =============================
+
+const player = new THREE.Group();
+
+const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(
+        0.5,
+        1.2,
+        4,
+        8
+    ),
+    new THREE.MeshStandardMaterial({
+        color: 0xeeeeff
+    })
+);
+
+body.position.y = 1.1;
+
+player.add(body);
+
+const head = new THREE.Mesh(
+    new THREE.SphereGeometry(
+        0.35,
+        16,
+        16
+    ),
+    new THREE.MeshStandardMaterial({
+        color: 0x111111
+    })
+);
+
+head.position.y = 2.1;
+
+player.add(head);
+
+scene.add(player);
+
+
+// =============================
+// PLAYER STATS
+// =============================
+
+let health = 100;
+
+let xp = 0;
+
+let level = 1;
+
+let attackCooldown = 0;
+
+let facingDirection = new THREE.Vector3(
+    0,
+    0,
+    -1
+);
+
+
+// =============================
+// ENEMIES
+// =============================
+
+const enemies = [];
+
+function spawnEnemy(x, z) {
+
+    const enemy = new THREE.Mesh(
+        new THREE.CapsuleGeometry(
+            0.5,
+            1.2,
+            4,
+            8
+        ),
+        new THREE.MeshStandardMaterial({
+            color: 0xff2222
+        })
+    );
+
+    enemy.position.set(x, 1.1, z);
+
+    enemy.userData.health = 3;
+
+    enemy.userData.lastAttack = 0;
+
+    scene.add(enemy);
+
+    enemies.push(enemy);
+}
+
+spawnEnemy(5, -5);
+spawnEnemy(-5, -8);
+spawnEnemy(8, 5);
+spawnEnemy(-8, 6);
+
+
+// =============================
+// MOBILE JOYSTICK
+// =============================
+
+const joystick = document.getElementById(
+    "joystick"
+);
+
+const stick = document.getElementById(
+    "stick"
+);
+
+let moveX = 0;
+
+let moveY = 0;
+
+let joystickPointer = null;
+
+joystick.addEventListener(
+    "pointerdown",
+    function(e) {
+
+        e.preventDefault();
+
+        joystickPointer = e.pointerId;
+
+        joystick.setPointerCapture(
+            e.pointerId
+        );
+
+        updateJoystick(e);
+    }
+);
+
+joystick.addEventListener(
+    "pointermove",
+    function(e) {
+
+        if (e.pointerId !== joystickPointer) {
+            return;
+        }
+
+        updateJoystick(e);
+    }
+);
+
+function resetJoystick(e) {
+
+    if (e.pointerId !== joystickPointer) {
+        return;
+    }
+
+    joystickPointer = null;
+
+    moveX = 0;
+    moveY = 0;
+
+    stick.style.left = "35px";
+    stick.style.top = "35px";
+}
+
+joystick.addEventListener(
+    "pointerup",
+    resetJoystick
+);
+
+joystick.addEventListener(
+    "pointercancel",
+    resetJoystick
+);
+
+function updateJoystick(e) {
+
+    const rect = joystick.getBoundingClientRect();
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    let dx = e.clientX - centerX;
+    let dy = e.clientY - centerY;
+
+    const distance = Math.sqrt(
+        dx * dx + dy * dy
+    );
+
+    const maxDistance = 35;
+
+    if (distance > maxDistance) {
+
+        dx = dx / distance * maxDistance;
+        dy = dy / distance * maxDistance;
+    }
+
+    moveX = dx / maxDistance;
+    moveY = dy / maxDistance;
+
+    stick.style.left = (35 + dx) + "px";
+    stick.style.top = (35 + dy) + "px";
+}
+
+
+// =============================
+// ATTACK SYSTEM
+// =============================
+
+document.getElementById(
+    "attack"
+).addEventListener(
+    "pointerdown",
+    attack
+);
+
+function attack() {
+
+    const now = performance.now();
+
+    if (now - attackCooldown < 450) {
+        return;
+    }
+
+    attackCooldown = now;
+
+    const attackPosition = player.position.clone();
+
+    attackPosition.add(
+        facingDirection.clone().multiplyScalar(1.2)
+    );
+
+    const slash = new THREE.Mesh(
+        new THREE.SphereGeometry(
+            0.8,
+            12,
+            12
+        ),
+        new THREE.MeshBasicMaterial({
+            color: 0xff3333,
+            transparent: true,
+            opacity: 0.6
+        })
+    );
+
+    slash.position.set(
+        attackPosition.x,
+        1.2,
+        attackPosition.z
+    );
+
+    scene.add(slash);
+
+    setTimeout(() => {
+        scene.remove(slash);
+        slash.geometry.dispose();
+        slash.material.dispose();
+    }, 120);
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+
+        const enemy = enemies[i];
+
+        const distance = player.position.distanceTo(
+            enemy.position.clone().setY(0)
+        );
+
+        if (distance < 2.5) {
+
+            const direction = enemy.position.clone()
+                .sub(player.position);
+
+            direction.y = 0;
+            direction.normalize();
+
+            const dot = direction.dot(facingDirection);
+
+            if (dot < 0.1) {
+                continue;
+            }
+
+            enemy.userData.health--;
+
+            enemy.material.color.setHex(0xffffff);
+
+            setTimeout(() => {
+
+                if (enemy.parent) {
+                    enemy.material.color.setHex(0xff2222);
+                }
+
+            }, 100);
+
+            if (enemy.userData.health <= 0) {
+
+                scene.remove(enemy);
+
+                enemies.splice(i, 1);
+
+                enemy.geometry.dispose();
+                enemy.material.dispose();
+
+                gainXP(25);
+            }
+        }
+    }
+}
+
+
+// =============================
+// EXPERIENCE SYSTEM
+// =============================
+
+function gainXP(amount) {
+
+    xp += amount;
+
+    if (xp >= level * 100) {
+
+        xp -= level * 100;
+
+        level++;
+
+        health = 100;
+
+        document.getElementById(
+            "message"
+        ).textContent = "LEVEL UP!";
+    }
+
+    document.getElementById(
+        "xp"
+    ).textContent = xp;
+
+    document.getElementById(
+        "level"
+    ).textContent = level;
+}
+
+
+// =============================
+// GAME LOOP
+// =============================
+
+const clock = new THREE.Clock();
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    const delta = Math.min(
+        clock.getDelta(),
+        0.05
+    );
+
+    // PLAYER MOVEMENT
+
+    const speed = 6;
+
+    const movement = new THREE.Vector3(
+        moveX,
+        0,
+        moveY
+    );
+
+    if (movement.length() > 0.1) {
+
+        movement.normalize();
+
+        player.position.addScaledVector(
+            movement,
+            speed * delta
+        );
+
+        facingDirection.copy(movement);
+
+        player.rotation.y = Math.atan2(
+            -movement.x,
+            -movement.z
+        );
+    }
+
+    player.position.x = THREE.MathUtils.clamp(
+        player.position.x,
+        -95,
+        95
+    );
+
+    player.position.z = THREE.MathUtils.clamp(
+        player.position.z,
+        -95,
+        95
+    );
+
+
+    // ENEMY AI
+
+    const now = performance.now();
+
+    for (const enemy of enemies) {
+
+        const direction = player.position.clone()
+            .sub(enemy.position);
+
+        direction.y = 0;
+
+        const distance = direction.length();
+
+        if (distance < 15 && distance > 1.5) {
+
+            direction.normalize();
+
+            enemy.position.addScaledVector(
+                direction,
+                2 * delta
+            );
+        }
+
+        if (
+            distance < 1.7 &&
+            now - enemy.userData.lastAttack > 1500
+        ) {
+
+            enemy.userData.lastAttack = now;
+
+            health = Math.max(
+                0,
+                health - 10
+            );
+
+            document.getElementById(
+                "healthFill"
+            ).style.width = health + "%";
+
+            if (health <= 0) {
+
+                health = 100;
+
+                player.position.set(0, 0, 0);
+
+                document.getElementById(
+                    "healthFill"
+                ).style.width = "100%";
+
+                document.getElementById(
+                    "message"
+                ).textContent = "YOU RESPAWNED";
+            }
+        }
+    }
+
+
+    // CAMERA
+
+    const cameraTarget = new THREE.Vector3(
+        player.position.x,
+        player.position.y + 7,
+        player.position.z + 11
+    );
+
+    camera.position.lerp(
+        cameraTarget,
+        Math.min(1, 5 * delta)
+    );
+
+    camera.lookAt(
+        player.position.x,
+        player.position.y + 1,
+        player.position.z
+    );
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+animate();
+
+
+// =============================
+// WINDOW RESIZE
+// =============================
+
+window.addEventListener(
+    "resize",
+    function() {
+
+        camera.aspect =
+            window.innerWidth / window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+    }
+);
+
+</script>
+
+</body>
+</html>
